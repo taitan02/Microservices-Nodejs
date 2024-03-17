@@ -16,6 +16,7 @@ class SignupInput extends LoginInput_1.LoginInput {
 }
 exports.SignupInput = SignupInput;
 __decorate([
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.Length)(10, 13),
     __metadata("design:type", String)
 ], SignupInput.prototype, "phone", void 0);

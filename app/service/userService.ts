@@ -6,7 +6,7 @@ import { plainToClass } from "class-transformer";
 import { SignupInput } from "../models/dto/SignupInput";
 import { AppValidationError } from "../utils/errors";
 import { UserType } from "../models/UserModel";
-import { GetHashedPassword, GetSalt } from "../utils/password";
+import { GetHashedPassword, GetSalt, ValidatePassword } from "../utils/password";
 
 @autoInjectable()
 export class UserService {
@@ -38,11 +38,26 @@ export class UserService {
             console.log(error)
             return ErrorResponse(500, error)
         }
-        
     }
 
     async UserLogin(event: APIGatewayProxyEventV2) {
-        return SuccessResponse({message: "res login user"})
+        try {
+            const input = plainToClass(SignupInput, event.body)
+            const error = await AppValidationError(input)
+            if (error) return ErrorResponse(400, error)
+            
+            // const salt = await GetSalt()
+            // const hashedPassword = await GetHashedPassword(input.password, salt)
+            const data = await this.repository.findAccount(input.email)
+            const verified = await ValidatePassword(input.password, data.password, data.salt)
+            if (!verified) {
+                throw new Error("password does not match")
+            }
+            return SuccessResponse(data)
+        } catch (error) {
+            console.log(error)
+            return ErrorResponse(500, error)
+        }
     }
 
     async UserVerify(event: APIGatewayProxyEventV2) {

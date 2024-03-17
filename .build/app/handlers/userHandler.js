@@ -23,10 +23,9 @@ exports.Signup = (0, core_1.default)((event) => {
     console.log(event);
     return serrvice.CreateUser(event);
 }).use((0, http_json_body_parser_1.default)());
-const Login = (event) => __awaiter(void 0, void 0, void 0, function* () {
+exports.Login = (0, core_1.default)((event) => {
     return serrvice.UserLogin(event);
-});
-exports.Login = Login;
+}).use((0, http_json_body_parser_1.default)());
 const Verify = (event) => __awaiter(void 0, void 0, void 0, function* () {
     return serrvice.UserVerify(event);
 });
