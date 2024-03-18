@@ -6,8 +6,9 @@ import { plainToClass } from "class-transformer";
 import { SignupInput } from "../models/dto/SignupInput";
 import { AppValidationError } from "../utils/errors";
 import { UserType } from "../models/UserModel";
-import { GetHashedPassword, GetSalt, ValidatePassword } from "../utils/password";
-
+import { getHashedPassword, getSalt, getToken, validatePassword, veriToken } from "../utils/password";
+import "../utils/notification";
+import { genAccessCode, sendVerificationCode } from "../utils/notification";
 @autoInjectable()
 export class UserService {
     repository: UserRepository
@@ -23,8 +24,8 @@ export class UserService {
             const error = await AppValidationError(input)
             if (error) return ErrorResponse(400, error)
             
-            const salt = await GetSalt()
-            const hashedPassword = await GetHashedPassword(input.password, salt)
+            const salt = await getSalt()
+            const hashedPassword = await getHashedPassword(input.password, salt)
             const data = await this.repository.createAccount({
                 email: input.email,
                 password: hashedPassword,
@@ -46,22 +47,39 @@ export class UserService {
             const error = await AppValidationError(input)
             if (error) return ErrorResponse(400, error)
             
-            // const salt = await GetSalt()
-            // const hashedPassword = await GetHashedPassword(input.password, salt)
+            // const salt = await getSalt()
+            // const hashedPassword = await getHashedPassword(input.password, salt)
             const data = await this.repository.findAccount(input.email)
-            const verified = await ValidatePassword(input.password, data.password, data.salt)
+            const verified = await validatePassword(input.password, data.password, data.salt)
             if (!verified) {
                 throw new Error("password does not match")
             }
-            return SuccessResponse(data)
+            const token = getToken(data);
+
+            return SuccessResponse({ token })
         } catch (error) {
             console.log(error)
             return ErrorResponse(500, error)
         }
     }
 
-    async UserVerify(event: APIGatewayProxyEventV2) {
-        return SuccessResponse({message: "res verify user"})
+    async GetVerificationToken(event: APIGatewayProxyEventV2) {
+        const token = event.headers.authorization
+        const payload = await veriToken(token.split(" ")[1])
+        if (payload) {
+            const { code, expiry } = genAccessCode()
+
+            //save verification code on DV
+            const response = await sendVerificationCode(code, payload.phone)
+            console.log("res", response)
+            return SuccessResponse({
+                message: "verification code is sent"
+            })
+        }
+    }
+
+    async VerifyUser(event: APIGatewayProxyEventV2) {
+        return SuccessResponse({message: "res post verify user"})
     }
 
     // User Profile

@@ -23,7 +23,6 @@ export class UserRepository {
         const values = [email]
         const result = await client.query(queryString, values)
         await client.end()
-        console.log(result.rows[0])
         if (result.rowCount < 1) {
             throw new Error("user does not exist")
         }

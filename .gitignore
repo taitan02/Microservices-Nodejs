@@ -7,3 +7,4 @@ jspm_packages
 yarn-error.log
 
 .build
+.env
