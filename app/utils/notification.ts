@@ -11,7 +11,7 @@ const client = twilio(accountSid, authToken)
 export const genAccessCode = () => {
     const code = Math.floor(Math.random() * 900000 + 10000)
     let expiry = new Date()
-    expiry.setTime(new Date().getTime() + 1 * 60 * 1000)
+    expiry.setTime(new Date().getTime() + 5 * 60 * 1000)
     return { code, expiry }
 }
 

@@ -9,13 +9,17 @@ import { UserType } from "../models/UserModel";
 import { getHashedPassword, getSalt, getToken, validatePassword, veriToken } from "../utils/password";
 import "../utils/notification";
 import { genAccessCode, sendVerificationCode } from "../utils/notification";
+import { VerificationInput } from "../models/dto/VerifyInput";
+import { timeDifference } from "../utils/dateHelper";
 @autoInjectable()
 export class UserService {
     repository: UserRepository
     constructor(repository: UserRepository) {
         this.repository = repository
     }
-    
+    async ResponseWithError (event: APIGatewayProxyEventV2) {
+        return ErrorResponse(404, "requested method is not support")
+    }
     // User create
     async CreateUser(event: APIGatewayProxyEventV2) {
 
@@ -66,19 +70,45 @@ export class UserService {
     async GetVerificationToken(event: APIGatewayProxyEventV2) {
         const token = event.headers.authorization
         const payload = await veriToken(token.split(" ")[1])
-        if (payload) {
-            const { code, expiry } = genAccessCode()
+        if (!payload) return ErrorResponse(401, "Unauthorized")
+        const { code, expiry } = genAccessCode()
+        console.log(code, expiry)
 
-            //save verification code on DV
-            const response = await sendVerificationCode(code, payload.phone)
-            console.log("res", response)
-            return SuccessResponse({
-                message: "verification code is sent"
-            })
-        }
+        await this.repository.updateVerificationCode(payload.user_id, expiry, code)
+
+
+        // const response = await sendVerificationCode(code, payload.phone)
+        return SuccessResponse({
+            message: "verification code is sent"
+        })
+        
     }
 
     async VerifyUser(event: APIGatewayProxyEventV2) {
+
+        const token = event.headers.authorization
+        const payload = await veriToken(token.split(" ")[1])
+        if (!payload) return ErrorResponse(401, "Unauthorized")
+
+        const input = plainToClass(VerificationInput, event.body)
+        const error = await AppValidationError(input)
+        if (error) return ErrorResponse(400, error)
+
+        const { verification_code, expiry } = await this.repository.findAccount(payload.email)
+        console.log(verification_code, input.code)
+        if (verification_code === parseInt(input.code)) {
+            const currentDate = new Date()
+            const diff = timeDifference(expiry, currentDate.toISOString(), "m")
+            console.log("diff", diff)
+            if (diff > 0) {
+                await this.repository.updateVerifiedUser(payload.user_id)
+            } else {
+                return ErrorResponse(403, "verify code is expired")
+            }
+        } else {
+            return ErrorResponse(400, "wrong verify code")
+        }
+
         return SuccessResponse({message: "res post verify user"})
     }
 
